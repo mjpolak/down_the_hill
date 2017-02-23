@@ -26,24 +26,196 @@
     <script>
     var infowindow=null;
     var map;
+
+    var start = {lat: 49.528829608279864, lng: 19.3179988861084};
+    var end = {lat: 49.528829608279864+0.0090133053600997861938, lng: 19.3179988861084};
       function initMap() {
          map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 8,
-          center: {lat: 63.333, lng: -150.5},  // Denali.
-          mapTypeId: 'terrain'
+          zoom: 14,
+          center: start,  // Denali.
+          mapTypeId: 'terrain',
+          disableDoubleClickZoom:true
         });
+
+
+// Place a draggable marker on the map
+var startMarker = new google.maps.Marker({
+    position: start,
+    map: map,
+    draggable:true,
+    title:"Start",
+    label:"S"
+});
+
+
+
+
+  startMarker.setMap(map);
+
+  // Place a draggable marker on the map
+  var endMarker = new google.maps.Marker({
+    position:end,
+    map: map,
+    draggable:true,
+    title:"Koniec",
+    label:"K"
+  });
+
+  endMarker.setMap(map);
+
+  var line = new google.maps.Polyline({
+    path: [start,end],
+    geodesic:true,
+    strokeColor: '#0000CC',
+    strokeOpacity: 0.4,
+    map: map
+  });
+
+  var points= null;
+
+  VecLen = function(vec)
+  {
+    return Math.sqrt(Math.pow(vec.lat,2)+Math.pow(vec.lng,2));
+  }
+
+
+  ToLiteral = function(x)
+  {
+    if(typeof x.lat === "function")
+    return {lat:x.lat(),lng:x.lng()};
+    return x;
+  }
+  VecMul = function(vec,x)
+  {
+    return {lat:vec.lat*x,lng:vec.lng*x};
+  }
+
+  VecAdd = function(Add,vec)
+  {
+    return {lat:Add.lat+vec.lat,lng:Add.lng+vec.lng};
+  }
+
+  var metr =0.0000090133053600997861938;
+  var res = metr*10;
+
+  var circles = [];
+
+  UpdateLocation = function(event)
+  {
+    var start = ToLiteral(startMarker.getPosition());
+    var end = ToLiteral(endMarker.getPosition());
+    line.setPath([start,end]);
+  }
+
+  DragStart = function(event)
+  {
+    for(var i in circles)
+    {
+      circles[i].setMap(null);
+    }
+    circles = [];
+  }
+
+  DragEnd = function(event){
+    var start = ToLiteral(startMarker.getPosition());
+    var end = ToLiteral(endMarker.getPosition());
+    line.setPath([start,end]);
+
+    var vecTo = {lat:end.lat-start.lat,lng:end.lng-start.lng};
+    var vecCross = {lat: -vecTo.lng,lng:vecTo.lat}
+    
+    var lenTo = VecLen(vecTo);
+    var lenCross = VecLen(vecCross);
+
+    var stepTo  = VecMul(vecTo,res/lenTo);
+    var stepCross = VecMul(vecCross,res/lenCross);
+    var stepCrossMinus = VecMul(vecCross,-res/lenCross);
+
+
+    var iloscOdstepow = Math.floor(lenTo/res);
+    var haflOdst = iloscOdstepow/4;
+    VecMul(vecCross,lenCross);
+
+    var startIter = start;
+
+    for(var x=0;x<iloscOdstepow;x++)
+    {
+
+      // circles.push(
+      //   new google.maps.Circle({
+      //   center:startIter,
+      //   radius:1,
+      //   strokeColor:'red',
+      //   strokeOpacity:0.5,
+      //   map:map
+      // }));
+
+      var leftIter = startIter;
+      var rightIter = startIter;
+      for(var y=1;y<haflOdst;y++)
+      {
+        leftIter = VecAdd(leftIter,stepCrossMinus);
+        rightIter = VecAdd(rightIter,stepCross);
+      // circles.push(
+      //   new google.maps.Circle({
+      //   center:leftIter,
+      //   radius:5,
+      //   strokeColor:'red',
+      //   strokeOpacity:0.5,
+      //   map:map
+      // }));
+      // circles.push(
+      //   new google.maps.Circle({
+      //   center:rightIter,
+      //   radius:5,
+      //   strokeColor:'red',
+      //   strokeOpacity:0.5,
+      //   map:map
+      // }));
+      }
+
+
+      startIter = VecAdd(startIter,stepTo);
+    }
+  }
+
+  startMarker.addListener('drag', UpdateLocation);
+  endMarker.addListener('drag', UpdateLocation);
+
+  startMarker.addListener('dragstart', DragStart);
+  endMarker.addListener('dragstart', DragStart);
+
+  startMarker.addListener('dragend', DragEnd);
+  endMarker.addListener('dragend', DragEnd);
+
         var elevator = new google.maps.ElevationService;
         infowindow = new google.maps.InfoWindow({map: map});
 
 // obwód biegunowy = 39940952,360679195316518662917662 m
-// 100 m = 0,00090133053600997861938
+// 1 m = 0,0000090133053600997861938
 
+        var centerControlDiv = document.createElement('div');
+        var centerControl = new CenterControl(centerControlDiv, map);
 
+        centerControlDiv.index = 1;
+        map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
         // Add a listener for the click event. Display the elevation for the LatLng of
         // the click inside the infowindow.
-        map.addListener('click', function(event) {
-          displayLocationElevation(event.latLng, elevator, infowindow);
+        map.addListener('rightclick', function(event) {
+          console.log(event);
+          //displayLocationElevation(event.latLng, elevator, infowindow);
         });
+
+        map.addListener('dragstart', function(event) {
+          console.log(event);
+          //displayLocationElevation(event.latLng, elevator, infowindow);
+        });
+
+        map.addListener('dragend', function(event) {
+          console.log(event);
+          //displayLocationElevation(event.latLng, elevator, infowindow);
+        });
+
       }
 
       function displayLocationElevation(location, elevator, infowindow) {
@@ -61,7 +233,7 @@
             if (results[0]) {
               // Open the infowindow indicating the elevation at the clicked position.
               infowindow.setContent('The elevation at this point <br>is ' +
-                  results[0].elevation + ' meters.'+location.lat());
+                  results[0].elevation + ' meters. lat:'+location.lat()+' latg: '+location.lng());
             } else {
               infowindow.setContent('No results found');
             }
@@ -69,6 +241,38 @@
             infowindow.setContent('Elevation service failed due to: ' + status);
           }
         });
+      }
+
+      function CenterControl(controlDiv, map) {
+
+        // Set CSS for the control border.
+        var controlUI = document.createElement('div');
+        controlUI.style.backgroundColor = '#fff';
+        controlUI.style.border = '2px solid #fff';
+        controlUI.style.borderRadius = '3px';
+        controlUI.style.boxShadow = '0 2px 6px rgba(0,0,0,.3)';
+        controlUI.style.cursor = 'pointer';
+        controlUI.style.marginBottom = '22px';
+        controlUI.style.textAlign = 'center';
+        controlUI.title = 'Zapytanie';
+        controlDiv.appendChild(controlUI);
+
+        // Set CSS for the control interior.
+        var controlText = document.createElement('div');
+        controlText.style.color = 'rgb(25,25,25)';
+        controlText.style.fontFamily = 'Roboto,Arial,sans-serif';
+        controlText.style.fontSize = '16px';
+        controlText.style.lineHeight = '38px';
+        controlText.style.paddingLeft = '5px';
+        controlText.style.paddingRight = '5px';
+        controlText.innerHTML = 'Zapytanie';
+        controlUI.appendChild(controlText);
+
+        // Setup the click event listeners: simply set the map to Chicago.
+        controlUI.addEventListener('click', function() {
+          
+        });
+
       }
     </script>
     <script async defer
