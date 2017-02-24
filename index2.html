@@ -1,247 +1,281 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
-    <meta charset="utf-8">
-    <title>Elevation service</title>
-    <style>
-      /* Always set the map height explicitly to define the size of the div
+
+<head>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <meta charset="utf-8">
+  <script src="loc.js" type="text/javascript"></script>
+  <title>Elevation service</title>
+  <style>
+    /* Always set the map height explicitly to define the size of the div
        * element that contains the map. */
-      #map {
-        height: 100%;
-      }
-      /* Optional: Makes the sample page fill the window. */
-      html, body {
-        height: 100%;
-        margin: 0;
-        padding: 0;
-      }
-    </style>
-  </head>
-
-
-  
-  <body>
-    <div id="map"></div>
-    <script>
-    var infowindow=null;
-    var map;
-
-    var start = {lat: 49.528829608279864, lng: 19.3179988861084};
-    var end = {lat: 49.528829608279864+0.0090133053600997861938, lng: 19.3179988861084};
-      function initMap() {
-         map = new google.maps.Map(document.getElementById('map'), {
-          zoom: 14,
-          center: start,  // Denali.
-          mapTypeId: 'terrain',
-          disableDoubleClickZoom:true
-        });
-
-
-// Place a draggable marker on the map
-var startMarker = new google.maps.Marker({
-    position: start,
-    map: map,
-    draggable:true,
-    title:"Start",
-    label:"S"
-});
-
-
-
-
-  startMarker.setMap(map);
-
-  // Place a draggable marker on the map
-  var endMarker = new google.maps.Marker({
-    position:end,
-    map: map,
-    draggable:true,
-    title:"Koniec",
-    label:"K"
-  });
-
-  endMarker.setMap(map);
-
-  var line = new google.maps.Polyline({
-    path: [start,end],
-    geodesic:true,
-    strokeColor: '#0000CC',
-    strokeOpacity: 0.4,
-    map: map
-  });
-
-  var points= null;
-
-  VecLen = function(vec)
-  {
-    return Math.sqrt(Math.pow(vec.lat,2)+Math.pow(vec.lng,2));
-  }
-
-
-  ToLiteral = function(x)
-  {
-    if(typeof x.lat === "function")
-    return {lat:x.lat(),lng:x.lng()};
-    return x;
-  }
-  VecMul = function(vec,x)
-  {
-    return {lat:vec.lat*x,lng:vec.lng*x};
-  }
-
-  VecAdd = function(Add,vec)
-  {
-    return {lat:Add.lat+vec.lat,lng:Add.lng+vec.lng};
-  }
-
-  var metr =0.0000090133053600997861938;
-  var res = metr*10;
-
-  var circles = [];
-
-  UpdateLocation = function(event)
-  {
-    var start = ToLiteral(startMarker.getPosition());
-    var end = ToLiteral(endMarker.getPosition());
-    line.setPath([start,end]);
-  }
-
-  DragStart = function(event)
-  {
-    for(var i in circles)
-    {
-      circles[i].setMap(null);
-    }
-    circles = [];
-  }
-
-  DragEnd = function(event){
-    var start = ToLiteral(startMarker.getPosition());
-    var end = ToLiteral(endMarker.getPosition());
-    line.setPath([start,end]);
-
-    var vecTo = {lat:end.lat-start.lat,lng:end.lng-start.lng};
-    var vecCross = {lat: -vecTo.lng,lng:vecTo.lat}
     
-    var lenTo = VecLen(vecTo);
-    var lenCross = VecLen(vecCross);
-
-    var stepTo  = VecMul(vecTo,res/lenTo);
-    var stepCross = VecMul(vecCross,res/lenCross);
-    var stepCrossMinus = VecMul(vecCross,-res/lenCross);
-
-
-    var iloscOdstepow = Math.floor(lenTo/res);
-    var haflOdst = iloscOdstepow/4;
-    VecMul(vecCross,lenCross);
-
-    var startIter = start;
-
-    for(var x=0;x<iloscOdstepow;x++)
-    {
-
-      // circles.push(
-      //   new google.maps.Circle({
-      //   center:startIter,
-      //   radius:1,
-      //   strokeColor:'red',
-      //   strokeOpacity:0.5,
-      //   map:map
-      // }));
-
-      var leftIter = startIter;
-      var rightIter = startIter;
-      for(var y=1;y<haflOdst;y++)
-      {
-        leftIter = VecAdd(leftIter,stepCrossMinus);
-        rightIter = VecAdd(rightIter,stepCross);
-      // circles.push(
-      //   new google.maps.Circle({
-      //   center:leftIter,
-      //   radius:5,
-      //   strokeColor:'red',
-      //   strokeOpacity:0.5,
-      //   map:map
-      // }));
-      // circles.push(
-      //   new google.maps.Circle({
-      //   center:rightIter,
-      //   radius:5,
-      //   strokeColor:'red',
-      //   strokeOpacity:0.5,
-      //   map:map
-      // }));
-      }
-
-
-      startIter = VecAdd(startIter,stepTo);
+    #map {
+      height: 100%;
     }
-  }
+    /* Optional: Makes the sample page fill the window. */
+    
+    html,
+    body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+    }
+  </style>
+</head>
 
-  startMarker.addListener('drag', UpdateLocation);
-  endMarker.addListener('drag', UpdateLocation);
 
-  startMarker.addListener('dragstart', DragStart);
-  endMarker.addListener('dragstart', DragStart);
 
-  startMarker.addListener('dragend', DragEnd);
-  endMarker.addListener('dragend', DragEnd);
+<body>
+  <div id="map"></div>
+  <script>
+    var metr = 0.0000090133053600997861938;
+    var res = metr * 100;
+    var margin = metr * 200;
+    var debug = true;
+    var infowindow = null;
+    var map;
+    var data;
 
-        var elevator = new google.maps.ElevationService;
-        infowindow = new google.maps.InfoWindow({map: map});
 
-// obwód biegunowy = 39940952,360679195316518662917662 m
-// 1 m = 0,0000090133053600997861938
 
-        var centerControlDiv = document.createElement('div');
-        var centerControl = new CenterControl(centerControlDiv, map);
+    var start = {
+      lat: 49.528829608279864,
+      lng: 19.3179988861084
+    };
+    var end = {
+      lat: 49.528829608279864 + 0.0090133053600997861938,
+      lng: 19.3179988861084
+    };
 
-        centerControlDiv.index = 1;
-        map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
-        // Add a listener for the click event. Display the elevation for the LatLng of
-        // the click inside the infowindow.
-        map.addListener('rightclick', function(event) {
-          console.log(event);
-          //displayLocationElevation(event.latLng, elevator, infowindow);
-        });
+    function initMap() {
+      map = new google.maps.Map(document.getElementById('map'), {
+        zoom: 14,
+        center: start, // Denali.
+        mapTypeId: 'terrain',
+        disableDoubleClickZoom: true
+      });
+      var elevator = new google.maps.ElevationService();
 
-        map.addListener('dragstart', function(event) {
-          console.log(event);
-          //displayLocationElevation(event.latLng, elevator, infowindow);
-        });
+      // Place a draggable marker on the map
+      var startMarker = new google.maps.Marker({
+        position: start,
+        map: map,
+        draggable: true,
+        title: "Start",
+        label: "S"
+      });
 
-        map.addListener('dragend', function(event) {
-          console.log(event);
-          //displayLocationElevation(event.latLng, elevator, infowindow);
-        });
 
+
+
+      startMarker.setMap(map);
+
+      // Place a draggable marker on the map
+      var endMarker = new google.maps.Marker({
+        position: end,
+        map: map,
+        draggable: true,
+        title: "Koniec",
+        label: "K"
+      });
+
+      endMarker.setMap(map);
+
+      var line = new google.maps.Polyline({
+        path: [start, end],
+        geodesic: true,
+        strokeColor: '#0000CC',
+        strokeOpacity: 0.4,
+        map: map
+      });
+
+      var points = null;
+
+      VecLen = function (vec) {
+        return Math.sqrt(Math.pow(vec.lat, 2) + Math.pow(vec.lng, 2));
       }
 
-      function displayLocationElevation(location, elevator, infowindow) {
-        // Initiate the location request
-        elevator.getElevationForLocations({
-          'locations': [location]
-        }, function(results, status) {
-            //infowindow.setVisible(visible:true);
 
-            //infowindow = new google.maps.InfoWindow({map: map});
-            infowindow.open(map);
-          infowindow.setPosition(location);
-          if (status === 'OK') {
-            // Retrieve the first result
-            if (results[0]) {
-              // Open the infowindow indicating the elevation at the clicked position.
-              infowindow.setContent('The elevation at this point <br>is ' +
-                  results[0].elevation + ' meters. lat:'+location.lat()+' latg: '+location.lng());
-            } else {
-              infowindow.setContent('No results found');
-            }
-          } else {
-            infowindow.setContent('Elevation service failed due to: ' + status);
+      ToLiteral = function (x) {
+        if (typeof x.lat === "function")
+          return {
+            lat: x.lat(),
+            lng: x.lng()
+          };
+        return x;
+      }
+      VecMul = function (vec, x) {
+        return {
+          lat: vec.lat * x,
+          lng: vec.lng * x
+        };
+      }
+
+      VecAdd = function (Add, vec) {
+        return {
+          lat: Add.lat + vec.lat,
+          lng: Add.lng + vec.lng
+        };
+      }
+
+
+
+
+
+      var circles = [];
+      var circlesMarker = [];
+      UpdateLocation = function (event) {
+        var start = ToLiteral(startMarker.getPosition());
+        var end = ToLiteral(endMarker.getPosition());
+        line.setPath([start, end]);
+      }
+
+      DragStart = function (event) {
+        if (debug) {
+          for (var i in circlesMarker) {
+            circlesMarker[i].setMap(null);
           }
-        });
+          circlesMarker = [];
+        }
+        circles = [];
+
       }
+
+      DragEnd = function (event) {
+        start = ToLiteral(startMarker.getPosition());
+        end = ToLiteral(endMarker.getPosition());
+        line.setPath([start, end]);
+
+        var vecTo = {
+          lat: end.lat - start.lat,
+          lng: end.lng - start.lng
+        };
+        var vecCross = {
+          lat: -vecTo.lng,
+          lng: vecTo.lat
+        }
+
+        var lenTo = VecLen(vecTo);
+        var lenCross = VecLen(vecCross);
+
+        var dirTo = VecMul(vecTo, 1 / lenTo);
+        var dirCross = VecMul(vecCross, 1 / lenCross);
+
+        var stepTo = VecMul(dirTo, res);
+        var stepCross = VecMul(dirCross, res);
+        var stepCrossMinus = VecMul(dirCross, -res);
+
+
+        var iloscOdstepow = Math.floor((lenTo + margin + margin) / res) + 1;
+        var haflOdst = iloscOdstepow / 4;
+        VecMul(vecCross, lenCross);
+
+        var startIter = VecAdd(start, VecMul(dirTo, -margin));
+
+        for (var x = 0; x < iloscOdstepow; x++) {
+
+          circles.push(startIter);
+          //   new google.maps.Circle({
+          //   center:startIter,
+          //   radius:1,
+          //   strokeColor:'red',
+          //   strokeOpacity:0.5,
+          //   map:map
+          // }));
+
+          var leftIter = startIter;
+          var rightIter = startIter;
+          for (var y = 1; y < haflOdst; y++) {
+            leftIter = VecAdd(leftIter, stepCrossMinus);
+            rightIter = VecAdd(rightIter, stepCross);
+            circles.push(leftIter);
+            //   new google.maps.Circle({
+            //   center:leftIter,
+            //   radius:1,
+            //   strokeColor:'red',
+            //   strokeOpacity:0.5,
+            //   map:map
+            // }));
+            circles.push(rightIter);
+            //   new google.maps.Circle({
+            //   center:rightIter,
+            //   radius:1,
+            //   strokeColor:'red',
+            //   strokeOpacity:0.5,
+            //   map:map
+            // }));
+          }
+
+
+          startIter = VecAdd(startIter, stepTo);
+        }
+        if (debug) {
+          for (var i in circles) {
+            circlesMarker.push(new google.maps.Circle({
+              center: circles[i],
+              radius: 1,
+              strokeColor: 'red',
+              strokeOpacity: 0.5,
+              map: map
+            }));
+          }
+        }
+      }
+
+      startMarker.addListener('drag', UpdateLocation);
+      endMarker.addListener('drag', UpdateLocation);
+
+      startMarker.addListener('dragstart', DragStart);
+      endMarker.addListener('dragstart', DragStart);
+
+      startMarker.addListener('dragend', DragEnd);
+      endMarker.addListener('dragend', DragEnd);
+
+
+      infowindow = new google.maps.InfoWindow({
+        map: map
+      });
+
+      // obwód biegunowy = 39940952,360679195316518662917662 m
+      // 1 m = 0,0000090133053600997861938
+
+      var centerControlDiv = document.createElement('div');
+      var centerControl = new CenterControl(centerControlDiv, map);
+
+      centerControlDiv.index = 1;
+      map.controls[google.maps.ControlPosition.TOP_CENTER].push(centerControlDiv);
+      // Add a listener for the click event. Display the elevation for the LatLng of
+      // the click inside the infowindow.
+      // map.addListener('rightclick', function(event) {
+      //   console.log(event);
+      //   //displayLocationElevation(event.latLng, elevator, infowindow);
+      // });
+
+      // map.addListener('dragstart', function(event) {
+      //   //displayLocationElevation(event.latLng, elevator, infowindow);
+      // });
+
+      // map.addListener('dragend', function(event) {
+      //   console.log(event);
+      //   //displayLocationElevation(event.latLng, elevator, infowindow);
+      // });
+
+      function FindAway(data) {
+          var dt =[]
+          for(var i in data)
+          {
+            dt.push(
+              new google.maps.Circle({
+              center:data[i].locations,
+              radius:1,
+              strokeColor:'red',
+              strokeOpacity:0.5,
+              map:map
+            }));
+          }
+      }
+
 
       function CenterControl(controlDiv, map) {
 
@@ -269,14 +303,31 @@ var startMarker = new google.maps.Marker({
         controlUI.appendChild(controlText);
 
         // Setup the click event listeners: simply set the map to Chicago.
-        controlUI.addEventListener('click', function() {
-          
-        });
+        controlUI.addEventListener('click', function () {
 
+          data = {
+            elevations: Dele,
+            locations: Dloc
+          };
+
+          FindAway(data);
+          //   elevator.getElevationForLocations({
+          //     'locations': circles
+          //   }, function(results, status) {
+          //     if (status === 'OK') {
+          //       data = results;
+          //     } else {
+          //       alert('status '+status)
+          //     }
+          //   });
+          // });
+
+        });
       }
-    </script>
-    <script async defer
-    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCXwWXYi5vR_PpfhShaA39mzhJXzoDjx4w&callback=initMap">
-    </script>
-  </body>
+    }
+  </script>
+  <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyCXwWXYi5vR_PpfhShaA39mzhJXzoDjx4w&callback=initMap">
+  </script>
+</body>
+
 </html>
